@@ -38,7 +38,10 @@ def start_zoo():
     myzoo.add_animal(MyClasses.Chimpanzee("Bob", 4))
     myzoo.add_animal(MyClasses.Chimpanzee("Berit", 3))
     myzoo.add_animal(MyClasses.Chimpanzee("Britta", 4))
-
+    myzoo.add_animal(MyClasses.Gazelle("Gina", 2))
+    myzoo.add_animal(MyClasses.Gazelle("Gilbert", 3))
+    myzoo.add_animal(MyClasses.Gazelle("Greta", 4))
+    myzoo.add_animal(MyClasses.Tiger("Tina", 6))
     return myzoo
 
 def run_zoo_simulation(myzoo, stop_event):
@@ -64,44 +67,43 @@ def input_listener(myzoo, stop_event):
 Skriv 'exit' för att stoppa simuleringen.
 Skriv 'log' för att visa nuvarande loggar från zoo.
 Skriv 'storm' för att trigga en stormhändelse i zoo.    
-Skriv 'add Elefant <namn> <ålder> för att lägga till en Elefant.
+Skriv 'fire' för att trigga en brandhändelse i zoo.
+Skriv 'add <animal> <namn> <ålder> för att lägga till en <animal>.
 Ditt val > """
     while not stop_event.is_set():
         user_input = input(input_str)
         if user_input.lower() == 'exit':
             print("Stoppar input loop... avslutande log från zoo")
-            print("Hämtar loggar från zoo:")
-            for log_entry in myzoo.log.get_all():
+            print("Hämtar dag loggar från zoo:")
+            for log_entry in myzoo.get_zoo_log():
                 print(log_entry)
             stop_event.set()
         elif user_input.lower() == 'log':
             print("Hämtar loggar från zoo:")
-            for log_entry in myzoo.log.get_all():
+            for log_entry in myzoo.get_zoo_log():
+                print(log_entry)
+        elif user_input.lower() == 'details':
+            print("Hämtar detaljerade loggar från zoo:")
+            for log_entry in myzoo.get_all_log():
                 print(log_entry)
         elif user_input.lower() == 'storm':
-            print("Triggering storm event!")
+            print("Triggering storm!")
             myzoo.storm_event()
+        elif user_input.lower() == 'fire':
+            print("Triggering fire!")
+            myzoo.fire_event()
         elif user_input.lower().startswith('add '):
             try:
                 _, animal, name, age_str = user_input.split()
                 age = int(age_str)
-                # det här är fult.... vill att zoo ska kunna skapa djur själv
-                if animal.lower() == "elefant":
-                    new_elephant = MyClasses.Elephant(name, age)
-                    myzoo.add_animal(new_elephant)
-                    print(f"Lade till elefant: {name}, Ålder: {age}")
-                elif animal.lower() == "lion":
-                    new_lion = MyClasses.Lion(name, age)
-                    myzoo.add_animal(new_lion)
-                    print(f"Lade till lejon: {name}, Ålder: {age}")
-                elif animal.lower() == "chimpanzee":
-                    new_chimpanzee = MyClasses.Chimpanzee(name, age)
-                    myzoo.add_animal(new_chimpanzee)
-                    print(f"Lade till chimpanzee: {name}, Ålder: {age}")
+                if myzoo.add_general_animal(animal, name, age):
+                    print(f"Lade till {animal}: {name}, Ålder: {age}")
                 else:
-                    print("Okänt djur. Just nu stöds: Elefant, Lion, Chimpanzee.")
+                    print(f"Okänt djur. Just nu stöds: {myzoo.current_known_animals()}")
             except ValueError:
                 print("Felaktigt kommando. Använd formatet: add <animal> <namn> <ålder>")
+        else:
+            print("Okänt kommando. Försök igen.")
 
 
 if __name__ == "__main__":
