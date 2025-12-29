@@ -41,15 +41,16 @@ def start_zoo():
 
     return myzoo
 
-def run_zoo_simulation(myzoo):
+def run_zoo_simulation(myzoo, stop_event):
     time_manager = TimeManager()
     print(f"Current Time: {time_manager.get_current_time()} hours")
 
-    while True:
+    while not stop_event.is_set():
     # den här loopen simulerar livet i zoo tills vi stoppar det manuellt  (fn-b på mitt tangentbord)  
         sleep(5)  # wait for 5 second to simulate time passing
         time_manager.advance_time(0.5) # Advance time by 30 minutes
-        print(f"Advanced Time: {time_manager.get_current_time()} hours")
+        # Moving current time to zoo log
+        # print(f"Advanced Time: {time_manager.get_current_time()} hours")
         # Create random visitors and welcome them to the zoo
         if myzoo.is_open: 
             myzoo.welcome_queue(visitor_creator(randint(0, 5)))
@@ -57,13 +58,50 @@ def run_zoo_simulation(myzoo):
         myzoo.current_time(time_manager.get_current_time())
     
 
-def input_listener():
+def input_listener(myzoo, stop_event):
     """Lyssnar på användarens input för att stoppa simuleringen."""
-    while True:
-        user_input = input("Skriv 'exit' för att stoppa simuleringen: ")
+    input_str = """
+Skriv 'exit' för att stoppa simuleringen.
+Skriv 'log' för att visa nuvarande loggar från zoo.
+Skriv 'storm' för att trigga en stormhändelse i zoo.    
+Skriv 'add Elefant <namn> <ålder> för att lägga till en Elefant.
+Ditt val > """
+    while not stop_event.is_set():
+        user_input = input(input_str)
         if user_input.lower() == 'exit':
-            print("Stoppar simuleringen...")
-            break
+            print("Stoppar input loop... avslutande log från zoo")
+            print("Hämtar loggar från zoo:")
+            for log_entry in myzoo.log.get_all():
+                print(log_entry)
+            stop_event.set()
+        elif user_input.lower() == 'log':
+            print("Hämtar loggar från zoo:")
+            for log_entry in myzoo.log.get_all():
+                print(log_entry)
+        elif user_input.lower() == 'storm':
+            print("Triggering storm event!")
+            myzoo.storm_event()
+        elif user_input.lower().startswith('add '):
+            try:
+                _, animal, name, age_str = user_input.split()
+                age = int(age_str)
+                # det här är fult.... vill att zoo ska kunna skapa djur själv
+                if animal.lower() == "elefant":
+                    new_elephant = MyClasses.Elephant(name, age)
+                    myzoo.add_animal(new_elephant)
+                    print(f"Lade till elefant: {name}, Ålder: {age}")
+                elif animal.lower() == "lion":
+                    new_lion = MyClasses.Lion(name, age)
+                    myzoo.add_animal(new_lion)
+                    print(f"Lade till lejon: {name}, Ålder: {age}")
+                elif animal.lower() == "chimpanzee":
+                    new_chimpanzee = MyClasses.Chimpanzee(name, age)
+                    myzoo.add_animal(new_chimpanzee)
+                    print(f"Lade till chimpanzee: {name}, Ålder: {age}")
+                else:
+                    print("Okänt djur. Just nu stöds: Elefant, Lion, Chimpanzee.")
+            except ValueError:
+                print("Felaktigt kommando. Använd formatet: add <animal> <namn> <ålder>")
 
 
 if __name__ == "__main__":
@@ -73,9 +111,10 @@ if __name__ == "__main__":
 
     print("Huvudprogram: Skapar trådar.")
     # Skapa trådobjekt
+    stop_event = threading.Event()
 
-    t1 = threading.Thread(target=run_zoo_simulation, name="Zoo business", args=(myzoo,))
-    t2 = threading.Thread(target=input_listener, name="User input listener", args=(myzoo,))
+    t1 = threading.Thread(target=run_zoo_simulation, name="Zoo business", args=(myzoo,stop_event))
+    t2 = threading.Thread(target=input_listener, name="User input listener", args=(myzoo,stop_event))
 
     # Starta trådarna
     t1.start() # Anropar run_zoo_simulation

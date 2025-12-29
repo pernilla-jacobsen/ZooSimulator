@@ -13,6 +13,11 @@ class Zoo:
         self.log = InternalLog.InternalLog()
         self.day = 1
 
+    # tror jag behöver denna
+    def current_day(self):
+        return self.day
+    
+
 # Hantering av djur i zoo
     def add_animal(self, Animal):
         Animal.get_zoo_log(self.log)
@@ -23,7 +28,9 @@ class Zoo:
 
     def feed_animals(self, food_amount):
         for animal in self.animals:
-            animal.feed(food_amount)
+            if animal.myHealth() < 50:
+                animal.feed(food_amount)
+                self.log.add(f"{animal.name} the {animal.species} has been fed.", level="ZOO")
 
 # Hantering av besökare i zoo
     def welcome_queue(self, x):
@@ -67,6 +74,11 @@ class Zoo:
 # Hantering av tid och dess påverkan på zoo
     def current_time(self, time):
         self.time = time
+        self.log.add(f"Current time updated to {self.time} hours.", level="ZOO")
+
+        # Check on animal health and feed them
+        self.feed_animals(20)
+        
 
         if 9 <= self.time < 19:
             if not self.is_open:
@@ -84,7 +96,7 @@ class Zoo:
             
 
         for animal in self.animals:
-            animal.interact_animal(choice(self.animals))  # Animals interact with each other randomly
+            animal.interact_animal(choice(self.animals))  # Animals interact with each other 
             animal.getting_hungry(3)  # Animals get hungrier over time
             if animal.isdead():
                 self.log.add(f"{animal.name} the {animal.species} has died Incident report written.", level="ZOO")
@@ -99,15 +111,17 @@ class Zoo:
             for visitor in self.visitors:
                 self.visit_next_animal(visitor)  
             
-
-        # this feeding system is not working, needs to be fixed (animals dye)
-        if self.time in [7.0,12.0,19.0]:
-            self.feed_animals(20)
-            print("Feeding time for the animals!")
-        
-
         self.log.add(f"End of time step: {self}", level="ZOO")
         
+    # random acts from input
+    def storm_event(self):
+        self.log.add("A sudden storm hits the zoo! Affects all animals health level and the visitors goes home sad", level="ZOO")
+        for animal in self.animals:
+            animal.getting_hungry(10)
+        for visitor in self.visitors:
+            visitor.happiness_level -= 15
+            self.bye_visitor(visitor)
+         
 
 
 class Visitor:
@@ -156,7 +170,12 @@ class Animal:
         visitor.see_animal(self)
 
     def interact_animal(self, animal):
-        pass
+        # super kollar om det är samma djur som iteragerar med sig själv
+        if self == animal:
+            self.log.add(f"{self.name} the {self.species} looks at itself in the mirror.", level="ANIMAL")
+            return True
+        else:
+            return False
 
     def getsAttacked(self, attacker):
         pass
@@ -189,20 +208,23 @@ class Lion(Carnivore):
         return True
     
     def interact(self, visitor):
-        visitor.see_animal(self)
+        super().interact(visitor)
         if self.roars():
             visitor.happiness_level += 15
 
     def interact_animal(self, animal):
-        if isinstance(animal, Lion):
-            self.log.add(f"{self.name} the Lion purrs and kisses {animal.name} the Lion.", level="ANIMAL")
+        if super().interact_animal(animal):
+            return
         else:
-            if animal.diet == "Herbivore":
-                self.log.add(f"{self.name} the Lion is hungry! And tries to eat {animal.name} the {animal.species}.", level="ANIMAL")
-                animal.getsAttacked(self)
+            if isinstance(animal, Lion):
+                self.log.add(f"{self.name} the Lion purrs and kisses {animal.name} the Lion.", level="ANIMAL")
             else:
-                self.log.add(f"{self.name} the Lion growls at {animal.name} the {animal.species} and retreats.", level="ANIMAL")
-        return
+                if animal.diet == "Herbivore":
+                    self.log.add(f"{self.name} the Lion is hungry! And tries to eat {animal.name} the {animal.species}.", level="ANIMAL")
+                    animal.getsAttacked(self)
+                else:
+                    self.log.add(f"{self.name} the Lion growls at {animal.name} the {animal.species} and retreats.", level="ANIMAL")
+            return
         
     def getsAttacked(self, attacker):
         if self.health_level < 30:
@@ -221,22 +243,25 @@ class Elephant(Herbivore):
             self.log.add("The elephant is too weak to squirt water.", level="ANIMAL")
             return False
         
-        print("Squirt!")
+        self.log.add("Squirt!", level="ANIMAL")
         self.getting_hungry(3)
         return True
     
     def interact(self, visitor):
-        visitor.see_animal(self)
+        super().interact(visitor)
         if self.squirt_water():
             visitor.happiness_level += 7
 
     def interact_animal(self, animal):
-        if isinstance(animal, Elephant):
-            self.log.add(f"{self.name} and {animal.name} honks and stamps happily.", level="ANIMAL")
-        else:
-            self.log.add(f"{self.name} the Elephant charges {animal.name} the {animal.species}.", level="ANIMAL")
-            animal.getsAttacked(self)
+        if super().interact_animal(animal):
             return
+        else:
+            if isinstance(animal, Elephant):
+                self.log.add(f"{self.name} and {animal.name} honks and stamps happily.", level="ANIMAL")
+            else:
+                self.log.add(f"{self.name} the Elephant charges {animal.name} the {animal.species}.", level="ANIMAL")
+                animal.getsAttacked(self)
+                return
         
     def getsAttacked(self, attacker):
         if attacker.diet == "Carnivore" and attacker.health_level > 20:
@@ -267,12 +292,15 @@ class Chimpanzee(Herbivore):
             visitor.happiness_level += 12
     
     def interact_animal(self, animal):
-        if isinstance(animal, Chimpanzee):
-            self.log.add(f"{self.name} and {animal.name} dance a monkey dance.", level="ANIMAL")
-        else:
-            self.log.add(f"{self.name} the Chimpanzee throughs a cocnut at {animal.name} the {animal.species}.", level="ANIMAL")
-            animal.getsAttacked(self)
+        if super().interact_animal(animal):
             return
+        else:
+            if isinstance(animal, Chimpanzee):
+                self.log.add(f"{self.name} and {animal.name} dance a monkey dance.", level="ANIMAL")
+            else:
+                self.log.add(f"{self.name} the Chimpanzee throughs a cocnut at {animal.name} the {animal.species}.", level="ANIMAL")
+                animal.getsAttacked(self)
+                return
         
     def getsAttacked(self, attacker):
         if attacker.diet == "Carnivore" and attacker.health_level > 15:

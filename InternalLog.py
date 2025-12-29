@@ -5,6 +5,9 @@ class InternalLog:
         self._storage = []  # Här sparas alla logg-rader
         self._daystore = {}  # Här kan loggar sparas per dag om så önskas
 
+# TODO Lägg till en tagg, tidstämpel och hämta ut alla som hör till den 
+
+
     def add(self, message, level="INFO"):
         """Lägger till ett nytt meddelande i det interna minnet."""
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
