@@ -1,174 +1,6 @@
 from random import choice
 import InternalLog
 
-class Zoo:
-    def __init__(self, name):
-        self.name = name
-        self.animals = []
-        self.is_open = False
-        self.time = 0       
-        self.visitors = []
-        self.visitor_counter = 0
-        self.incident_counter = 0
-        self.log = InternalLog.InternalLog()
-        self.day = 0 
-        self.overall_happiness = 0
-
-    
-
-# Hantering av djur i zoo
-    def add_general_animal(self, animal, name, age):
-        if animal.lower() == "elephant":
-            self.add_animal(Elephant(name.capitalize(), age))
-        elif animal.lower() == "lion":
-            self.add_animal(Lion(name.capitalize(), age))
-        elif animal.lower() == "chimpanzee":
-            self.add_animal(Chimpanzee(name.capitalize(), age))
-        elif animal.lower() == "gazelle":
-            self.add_animal(Gazelle(name.capitalize(), age))
-        elif animal.lower() == "tiger":
-            self.add_animal(Tiger(name.capitalize(), age))
-        else:
-             return False
-        return True
-    
-    def current_known_animals(self):
-        return ["Elephant", "Lion", "Chimpanzee", "Gazelle", "Tiger"]
-
-    def add_animal(self, Animal):
-        Animal.get_zoo_log(self.log)
-        self.animals.append(Animal)
-        self.log.add(f"{Animal.name} the {Animal.species} has been added to the zoo.", level="ZOO")
-
-    def get_animals(self):
-        return self.animals
-
-    def feed_animals(self, food_amount):
-        for animal in self.animals:
-            if animal.myHealth() < 50:
-                animal.feed(food_amount)
-                self.log.add(f"{animal.name} the {animal.species} has been fed.", level="ZOO")
-
-# Hantering av besökare i zoo
-    def welcome_queue(self, x):
-        for visitor in x:
-            self.welcome_visitor(visitor)
-
-    def welcome_visitor(self, visitor):
-        if not self.is_open:
-            self.log.add(f"Sorry, {visitor.name}, the zoo is currently closed.")
-            return
-        else: 
-            self.log.add(f"Welcome to {self.name}, {visitor.name}!", level="VISITOR")
-            visitor.current_animal = 0
-            self.visitor_counter += 1 # Increment visitor counter
-            self.visitors.append(visitor)
-
-    def bye_visitor(self, visitor):
-        if visitor in self.visitors:
-            self.overall_happiness += visitor.happiness_level
-            self.visitors.remove(visitor)
-            self.log.add(f"Goodbye, {visitor}! Thanks for visiting {self.name}.",level="VISITOR")
-        else:
-            print(f"{visitor.name} is not in the zoo.")
-
-    def empty_visitors(self):
-        # make a copy of the visitor list to avoid modification during iteration
-        v_copy = self.visitors.copy()
-        for visitor in v_copy:
-                self.bye_visitor(visitor)
-        # se till att alla verkligen är borta (behövs kanske inte längre)
-        self.visitors.clear()
-
-    def visit_next_animal(self, visitor):
-        if visitor.current_animal < len(self.animals):
-            animal = self.animals[visitor.current_animal]
-            animal.interact(visitor)
-            visitor.current_animal += 1
-            self.log.add(f"{visitor.name} visited {animal.name} the {animal.species}.", level="VISITOR")
-        else:
-            self.log.add(f"{visitor.name} has visited all animals in the zoo.", level="VISITOR")
-            self.bye_visitor(visitor)
-       
-    
-   
-# print zoo status
-    def __str__(self):
-        animal_list = ", ".join(str(animal) for animal in self.animals)
-        
-        return f"Zoo Name: {self.name}, Animals: {animal_list}."
-    
-# Hantering av tid och dess påverkan på zoo
-    def current_time(self, time):
-        self.time = time
-        self.log.add(f"Current time updated to {self.time} hours.", level="ZOO")
-
-        # Check on animal health and feed them
-        self.feed_animals(20)
-        
-
-        if 9 <= self.time < 19:
-            if not self.is_open:
-                self.is_open = True
-                self.day += 1
-                self.log.add(f"{self.name} is now OPEN. {self}", level="ZOODAY")
-        else:   
-            if self.is_open:
-                self.log.add(f"{self.name} is now CLOSED. {self}", level="ZOODAY")
-                self.empty_visitors()
-                self.log.add(f"Today, {self.visitor_counter} visitors came to the zoo. Average happiness = {self.overall_happiness/self.visitor_counter}. The number of incidents today: {self.incident_counter}.", level="ZOODAY")
-                self.visitor_counter = 0 # reset counter for the next day
-                self.overall_happiness = 0 # reset overall happiness for the next day
-                self.incident_counter = 0 # reset incident counter for the next day
-            self.is_open = False
-            
-
-        for animal in self.animals:
-            animal.interact_animal(choice(self.animals))  # Animals interact with each other 
-            animal.getting_hungry(3)  # Animals get hungrier over time
-            if animal.isdead():
-                self.log.add(f"{animal.name} the {animal.species} has died Incident report written.", level="ZOO")
-                self.incident_counter += 1
-                # det här kan ställa till problem i loopen, ignorerar för nu
-                self.animals.remove(animal)
-                self.log.add(f"All visitors are affected negatively by the death of {animal.name}!", level="ZOO")
-                for visitor in self.visitors:
-                    visitor.happiness_level -= 20
-
-        # move the visitors to the next animal
-        if self.is_open:
-            for visitor in self.visitors:
-                self.visit_next_animal(visitor)  
-            
-        self.log.add(f"End of time step {self.time}, day {self.day}: {self}", level="ZOO")
-        
-    # random acts from input
-    def storm_event(self):
-        self.log.add("A sudden storm hits the zoo! Affects all animals health level and the visitors goes home sad", level="ZOO")
-        for animal in self.animals:
-            animal.getting_hungry(10)
-        for visitor in self.visitors:
-            visitor.happiness_level -= 15
-        self.empty_visitors()
-        self.incident_counter += 1
-
-    def fire_event(self):
-        self.log.add("A fire breaks out in the zoo! Emergency protocols activated.", level="ZOO")
-        for animal in self.animals:
-            animal.getting_hungry(20)
-        for visitor in self.visitors:
-            visitor.happiness_level -= 50
-        self.empty_visitors()
-        self.incident_counter += 1
-
-
-# hämta loggar
-    def get_zoo_log(self):
-        return self.log.get_level("ZOODAY")
-    
-    def get_all_log(self):
-        return self.log.get_all()
-
 
 class Visitor:
     def __init__(self, name, age):
@@ -430,6 +262,194 @@ class Tiger(Carnivore):
             self.getting_hungry(30)
         else:
             self.log.add(f"{self.name} the Tiger dodged the attack from {attacker.name} the {attacker.species}!", level="ANIMAL")
+
+
+class Zoo:
+    def __init__(self, name):
+        self.name = name
+        self.animals = []
+        self.is_open = False
+        self.time = 0       
+        self.visitors = []
+        self.visitor_counter = 0
+        self.incident_counter = 0
+        self.log = InternalLog.InternalLog()
+        self.day = 0 
+        self.overall_happiness = 0
+
+    
+
+# Hantering av djur i zoo
+    # Djur-mapping
+    animal_types = {
+        "elephant": Elephant,
+        "lion": Lion,
+        "chimpanzee": Chimpanzee,
+        "gazelle": Gazelle,
+        "tiger": Tiger
+    }
+
+    def add_general_animal(self, animal, name, age):
+        cls = self.animal_types.get(animal.lower())
+        if cls is None:
+            return False  # okänt djur
+
+        self.add_animal(cls(name.capitalize(), age))
+        return True
+    
+    def current_known_animals(self):
+        return self.animal_types.keys()
+
+    def add_animal(self, Animal):
+        Animal.get_zoo_log(self.log)
+        self.animals.append(Animal)
+        self.log.add(f"{Animal.name} the {Animal.species} has been added to the zoo.", level="ZOO")
+
+    def get_animals(self):
+        return self.animals
+
+    def feed_animals(self, food_amount):
+        for animal in self.animals:
+            if animal.myHealth() < 50:
+                animal.feed(food_amount)
+                self.log.add(f"{animal.name} the {animal.species} has been fed.", level="ZOO")
+
+# Hantering av besökare i zoo
+    def welcome_queue(self, x):
+        for visitor in x:
+            self.welcome_visitor(visitor)
+
+    def welcome_visitor(self, visitor):
+        if not self.is_open:
+            self.log.add(f"Sorry, {visitor.name}, the zoo is currently closed.")
+            return
+        else: 
+            self.log.add(f"Welcome to {self.name}, {visitor.name}!", level="VISITOR")
+            visitor.current_animal = 0
+            self.visitor_counter += 1 # Increment visitor counter
+            self.visitors.append(visitor)
+
+    def bye_visitor(self, visitor):
+        if visitor in self.visitors:
+            self.overall_happiness += visitor.happiness_level
+            self.visitors.remove(visitor)
+            self.log.add(f"Goodbye, {visitor}! Thanks for visiting {self.name}.",level="VISITOR")
+        else:
+            print(f"{visitor.name} is not in the zoo.")
+
+    def empty_visitors(self):
+        # make a copy of the visitor list to avoid modification during iteration
+        v_copy = self.visitors.copy()
+        for visitor in v_copy:
+                self.bye_visitor(visitor)
+        # se till att alla verkligen är borta (behövs kanske inte längre)
+        self.visitors.clear()
+
+    def visit_next_animal(self, visitor):
+        if visitor.current_animal < len(self.animals):
+            animal = self.animals[visitor.current_animal]
+            animal.interact(visitor)
+            visitor.current_animal += 1
+            self.log.add(f"{visitor.name} visited {animal.name} the {animal.species}.", level="VISITOR")
+        else:
+            self.log.add(f"{visitor.name} has visited all animals in the zoo.", level="VISITOR")
+            self.bye_visitor(visitor)
+       
+    
+   
+# print zoo status
+    def __str__(self):
+        animal_list = ", ".join(str(animal) for animal in self.animals)
+        
+        return f"Zoo Name: {self.name}, Animals: {animal_list}."
+    
+    def time_step_animals(self):
+        # Handle animal interactions and health updates over a time ste
+        dead_animals = []
+        # Animal interactions and health updates
+        for animal in self.animals:
+            copy_of_animals = self.animals.copy()
+            copy_of_animals.remove(animal)
+            animal.interact_animal(choice(copy_of_animals))  # Animals interact with each other, not themselves
+            animal.getting_hungry(3)  # Animals get hungrier over time
+            if animal.isdead():
+                self.log.add(f"{animal.name} the {animal.species} has died Incident report written.", level="ZOO")
+                self.incident_counter += 1
+                dead_animals.append(animal)
+                self.log.add(f"All visitors are affected negatively by the death of {animal.name}!", level="ZOO")
+                for visitor in self.visitors:
+                    visitor.happiness_level -= 20
+
+        # Remove dead animals from the zoo
+        for dead_animal in dead_animals:    
+            self.animals.remove(dead_animal)
+
+        # feed animals if needed
+        self.feed_animals(20)
+
+    def time_step_visitors(self):
+        # Move visitors to the next animal
+            for visitor in self.visitors:
+                self.visit_next_animal(visitor)         
+    
+# Hantering av tid och dess påverkan på zoo
+    def current_time(self, time):
+        self.time = time
+        self.log.add(f"Current time updated to {self.time} hours.", level="ZOO")
+
+        # öppna eller stäng zoo beroende på tid
+        if 9 <= self.time < 19:
+            if not self.is_open:
+                self.is_open = True
+                self.day += 1
+                self.log.add(f"{self.name} is now OPEN. {self}", level="ZOODAY")
+        else:   
+            if self.is_open:
+                self.log.add(f"{self.name} is now CLOSED. {self}", level="ZOODAY")
+                self.empty_visitors()
+                if self.visitor_counter > 0:
+                    self.log.add(f"Today, {self.visitor_counter} visitors came to the zoo. Average happiness = {self.overall_happiness/self.visitor_counter}. The number of incidents today: {self.incident_counter}.", level="ZOODAY")
+                else:
+                    self.log.add(f"Today, no visitors came to the zoo. The number of incidents today: {self.incident_counter}.", level="ZOODAY")
+                self.visitor_counter = 0 # reset counter for the next day
+                self.overall_happiness = 0 # reset overall happiness for the next day
+                self.incident_counter = 0 # reset incident counter for the next day
+            self.is_open = False
+            
+        # uppdatera djur och besökare i zoo
+        self.time_step_animals()
+        if self.is_open:
+            self.time_step_visitors()
+            
+        self.log.add(f"End of time step {self.time}, day {self.day}: {self}", level="ZOO")
+        
+    # random acts from input
+    def storm_event(self):
+        self.log.add("A sudden storm hits the zoo! Affects all animals health level and the visitors goes home sad", level="ZOO")
+        for animal in self.animals:
+            animal.getting_hungry(10)
+        for visitor in self.visitors:
+            visitor.happiness_level -= 15
+        self.empty_visitors()
+        self.incident_counter += 1
+
+    def fire_event(self):
+        self.log.add("A fire breaks out in the zoo! Emergency protocols activated.", level="ZOO")
+        for animal in self.animals:
+            animal.getting_hungry(20)
+        for visitor in self.visitors:
+            visitor.happiness_level -= 50
+        self.empty_visitors()
+        self.incident_counter += 1
+
+
+# hämta loggar
+    def get_zoo_log(self):
+        return self.log.get_level("ZOODAY")
+    
+    def get_all_log(self):
+        return self.log.get_all()
+
 
 #test
 if __name__ == "__main__":   
